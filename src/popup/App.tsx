@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, AlertTriangle, CheckCircle, Info, Moon, Sun, Settings, Zap, Eye, BarChart3, Wifi, WifiOff } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Info, Moon, Sun, Settings, Zap, Eye, BarChart3, Wifi, WifiOff, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { apiService, AnalysisResult } from '@/lib/api'
+import { apiService, AnalysisResult, FactCheckClaim } from '@/lib/api'
 import DebugPanel from '@/components/DebugPanel'
 import AnalysisProgress, { AnalysisStep } from '@/components/AnalysisProgress'
 
@@ -20,6 +20,7 @@ interface PageAnalysis {
   fakeNewsScore: number
   overallRisk: 'low' | 'medium' | 'high'
   results: ScanResult[]
+  factCheckClaims?: FactCheckClaim[]
   apiData?: AnalysisResult
 }
 
@@ -98,6 +99,12 @@ const App: React.FC = () => {
         status: 'pending'
       },
       {
+        id: 'fact-check',
+        title: 'Fact-Checking Claims',
+        description: 'Verifying factual accuracy of content',
+        status: 'pending'
+      },
+      {
         id: 'generate-report',
         title: 'Generating Analysis Report',
         description: 'Creating comprehensive risk assessment',
@@ -138,7 +145,17 @@ const App: React.FC = () => {
       updateStep('detect-ai', 'completed')
       addDebugLog(`AI likelihood: ${detectResult.aiLikelihoodPercent}%`)
       
-      // Step 4: Generate report
+      // Step 4: Fact-check content
+      updateStep('fact-check', 'loading')
+      addDebugLog('Calling fact-check API...')
+      const factCheckResult = await apiService.factCheck(scrapeResult.text)
+      updateStep('fact-check', 'completed')
+      addDebugLog(`Found ${factCheckResult.claims.length} claims to fact-check`)
+      
+      // Calculate fake news score based on fact-check results
+      const fakeNewsPercentage = apiService.calculateFakeNewsPercentage(factCheckResult.claims)
+      
+      // Step 5: Generate report
       updateStep('generate-report', 'loading')
       addDebugLog('Generating analysis report...')
       
@@ -146,9 +163,9 @@ const App: React.FC = () => {
         url: scrapeResult.url,
         title: tab.title || 'Unknown',
         aiScore: detectResult.aiLikelihoodPercent,
-        fakeNewsScore: Math.floor(Math.random() * 30), // Placeholder for now
-        overallRisk: detectResult.aiLikelihoodPercent > 70 ? 'high' : 
-                    detectResult.aiLikelihoodPercent > 40 ? 'medium' : 'low',
+        fakeNewsScore: fakeNewsPercentage,
+        overallRisk: detectResult.aiLikelihoodPercent > 70 || fakeNewsPercentage > 50 ? 'high' : 
+                    detectResult.aiLikelihoodPercent > 40 || fakeNewsPercentage > 30 ? 'medium' : 'low',
         results: [
           {
             id: '1',
@@ -156,11 +173,20 @@ const App: React.FC = () => {
             confidence: detectResult.aiLikelihoodPercent,
             description: `Text analysis suggests ${detectResult.aiLikelihoodPercent}% likelihood of AI generation. Preview: "${detectResult.textPreview.substring(0, 100)}..."`,
             timestamp: new Date()
+          },
+          {
+            id: '2',
+            type: 'fake-news',
+            confidence: fakeNewsPercentage,
+            description: `${factCheckResult.claims.filter(claim => !claim.isLikelyTrue).length} out of ${factCheckResult.claims.length} claims appear to be false or misleading`,
+            timestamp: new Date()
           }
         ],
+        factCheckClaims: factCheckResult.claims,
         apiData: {
           scrapedData: scrapeResult,
           detectionResult: detectResult,
+          factCheckResult: factCheckResult,
           timestamp: new Date()
         }
       }
@@ -199,6 +225,32 @@ const App: React.FC = () => {
             confidence: 70,
             description: 'Claims lack credible sources (API unavailable, using mock data)',
             timestamp: new Date()
+          }
+        ],
+        factCheckClaims: [
+          {
+            claim: "The new policy will reduce costs by 50%",
+            isLikelyTrue: false,
+            supportingSources: [
+              {
+                title: "Economic Analysis Report",
+                link: "https://example.com/report1"
+              }
+            ]
+          },
+          {
+            claim: "Climate change affects global temperatures",
+            isLikelyTrue: true,
+            supportingSources: [
+              {
+                title: "NASA Climate Data",
+                link: "https://nasa.gov/climate"
+              },
+              {
+                title: "IPCC Report 2023",
+                link: "https://ipcc.ch/report"
+              }
+            ]
           }
         ]
       }
@@ -337,7 +389,7 @@ const App: React.FC = () => {
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <div className="text-2xl font-bold text-warning-600">{analysis.fakeNewsScore}%</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Fake News</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Fake Claims</div>
                     </div>
                   </div>
                   
@@ -394,6 +446,68 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Factual Analysis Section */}
+            {analysis.factCheckClaims && analysis.factCheckClaims.length > 0 && (
+              <div className="card p-4">
+                <h3 className="text-lg font-semibold mb-3">Factual Analysis</h3>
+                <div className="space-y-3">
+                  {analysis.factCheckClaims.map((claim, index) => (
+                    <div 
+                      key={index} 
+                      className={cn(
+                        "p-3 rounded-lg border-l-4",
+                        claim.isLikelyTrue 
+                          ? "bg-green-50 dark:bg-green-900/20 border-green-500" 
+                          : "bg-red-50 dark:bg-red-900/20 border-red-500"
+                      )}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          {claim.isLikelyTrue ? (
+                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                          )}
+                          <span className={cn(
+                            "font-medium text-sm",
+                            claim.isLikelyTrue ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"
+                          )}>
+                            {claim.isLikelyTrue ? "Likely True" : "Likely False"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                        "{claim.claim}"
+                      </p>
+                      
+                      {claim.supportingSources && claim.supportingSources.length > 0 && (
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                            Supporting Sources:
+                          </h5>
+                          {claim.supportingSources.map((source, sourceIndex) => (
+                            <div key={sourceIndex} className="flex items-center space-x-2">
+                              <ExternalLink className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              <a 
+                                href={source.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate"
+                                title={source.title}
+                              >
+                                {source.title}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

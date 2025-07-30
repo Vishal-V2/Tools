@@ -11,9 +11,25 @@ export interface DetectionResult {
   aiLikelihoodPercent: number
 }
 
+export interface SupportingSource {
+  title: string
+  link: string
+}
+
+export interface FactCheckClaim {
+  claim: string
+  isLikelyTrue: boolean
+  supportingSources: SupportingSource[]
+}
+
+export interface FactCheckResult {
+  claims: FactCheckClaim[]
+}
+
 export interface AnalysisResult {
   scrapedData: ScrapedData
   detectionResult: DetectionResult
+  factCheckResult?: FactCheckResult
   timestamp: Date
 }
 
@@ -79,8 +95,35 @@ class ApiService {
     }
   }
 
-  // Complete analysis workflow
-  async analyzePage(url: string): Promise<AnalysisResult> {
+  // Fact-check page content
+  async factCheck(text: string): Promise<FactCheckResult> {
+    this.log('Fact-checking content, text length:', text.length)
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/factcheck`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      this.log('Fact-check response:', data)
+      
+      return data
+    } catch (error) {
+      this.log('Fact-check error:', error)
+      throw new Error(`Failed to fact-check content: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Complete analysis workflow with optional fact-checking
+  async analyzePage(url: string, includeFactCheck: boolean = true): Promise<AnalysisResult> {
     this.log('Starting page analysis for:', url)
     
     try {
@@ -92,9 +135,17 @@ class ApiService {
       this.log('Step 2: Detecting AI-generated content...')
       const detectionResult = await this.detectAI(scrapedData.text)
       
+      // Step 3: Fact-check content (optional)
+      let factCheckResult
+      if (includeFactCheck) {
+        this.log('Step 3: Fact-checking content...')
+        factCheckResult = await this.factCheck(scrapedData.text)
+      }
+      
       const result: AnalysisResult = {
         scrapedData,
         detectionResult,
+        factCheckResult,
         timestamp: new Date()
       }
       
@@ -105,6 +156,13 @@ class ApiService {
       this.log('Analysis failed:', error)
       throw error
     }
+  }
+
+  // Calculate fake news percentage from fact-check claims
+  calculateFakeNewsPercentage(claims: FactCheckClaim[]): number {
+    if (!claims || claims.length === 0) return 0
+    const falseClaims = claims.filter(claim => !claim.isLikelyTrue).length
+    return Math.round((falseClaims / claims.length) * 100)
   }
 
   // Test API connectivity
