@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "HackSky AI Detector",
+  "version": "1.0.0",
+  "description": "AI-powered threat interception system for detecting fake content and honeytraps",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HackSky AI Detector"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+} 
