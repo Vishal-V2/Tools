@@ -43,6 +43,9 @@ const App: React.FC = () => {
     
     // Test API connection on load
     testApiConnection()
+
+    // Load persisted analysis data for current tab
+    loadPersistedAnalysis()
   }, [isDark])
 
   const addDebugLog = (message: string) => {
@@ -112,6 +115,41 @@ const App: React.FC = () => {
       }
     ]
     setAnalysisSteps(steps)
+  }
+
+  const loadPersistedAnalysis = async () => {
+    try {
+      // Get current tab URL
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (!tab.url) return
+
+      // Get stored analysis data
+      chrome.storage.local.get([`analysis_${tab.url}`], (result) => {
+        const storedAnalysis = result[`analysis_${tab.url}`]
+        if (storedAnalysis) {
+          addDebugLog(`Loaded persisted analysis for: ${tab.url}`)
+          setAnalysis(storedAnalysis)
+        }
+      })
+    } catch (error) {
+      addDebugLog(`Error loading persisted analysis: ${error}`)
+    }
+  }
+
+  const saveAnalysisToStorage = async (analysisData: PageAnalysis) => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (!tab.url) return
+
+      // Store analysis data with URL as key
+      chrome.storage.local.set({
+        [`analysis_${tab.url}`]: analysisData
+      }, () => {
+        addDebugLog(`Saved analysis data for: ${tab.url}`)
+      })
+    } catch (error) {
+      addDebugLog(`Error saving analysis to storage: ${error}`)
+    }
   }
 
   const scanCurrentPage = async () => {
@@ -192,6 +230,7 @@ const App: React.FC = () => {
       }
       
       setAnalysis(analysisResult)
+      saveAnalysisToStorage(analysisResult)
       updateStep('generate-report', 'completed')
       addDebugLog('Analysis complete and displayed')
       
@@ -255,6 +294,8 @@ const App: React.FC = () => {
         ]
       }
       setAnalysis(mockAnalysis)
+      saveAnalysisToStorage(mockAnalysis)
+      updateStep('generate-report', 'completed')
     } finally {
       setIsScanning(false)
     }

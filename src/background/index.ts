@@ -103,6 +103,24 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
     console.log('[HackSky Background] Tab updated:', tab.url)
     
+    // Clear any stored analysis data for the previous URL when navigating to a new page
+    if (changeInfo.url) {
+      console.log('[HackSky Background] URL changed, clearing stored analysis data')
+      // Get all stored analysis data and remove entries that don't match current URL
+      chrome.storage.local.get(null, (items) => {
+        const keysToRemove: string[] = []
+        Object.keys(items).forEach(key => {
+          if (key.startsWith('analysis_') && key !== `analysis_${tab.url}`) {
+            keysToRemove.push(key)
+          }
+        })
+        if (keysToRemove.length > 0) {
+          chrome.storage.local.remove(keysToRemove)
+          console.log('[HackSky Background] Cleared analysis data for:', keysToRemove)
+        }
+      })
+    }
+    
     // Check if auto-scan is enabled
     chrome.storage.local.get(['autoScan'], (result) => {
       if (result.autoScan) {
@@ -114,4 +132,4 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       }
     })
   }
-}) 
+})
