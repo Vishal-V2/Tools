@@ -108,6 +108,12 @@ const App: React.FC = () => {
         status: 'pending'
       },
       {
+        id: 'sentiment-analysis',
+        title: 'Sentiment Analysis',
+        description: 'Analyzing content sentiment and information',
+        status: 'pending'
+      },
+      {
         id: 'generate-report',
         title: 'Generating Analysis Report',
         description: 'Creating comprehensive risk assessment',
@@ -157,148 +163,185 @@ const App: React.FC = () => {
     initializeAnalysisSteps()
     addDebugLog('Starting page scan...')
     
+    // Initialize variables to track results and failures
+    let tab: chrome.tabs.Tab | undefined
+    let scrapeResult: any = null
+    let detectResult: any = null
+    let factCheckResult: any = null
+    let sentimentResult: any = null
+    const results: ScanResult[] = []
+    
     try {
       // Step 1: Get current page URL
       updateStep('get-url', 'loading')
       addDebugLog('Getting current page URL...')
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      if (!tab.url) {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      tab = tabs[0]
+      if (!tab?.url) {
         throw new Error('No active tab URL found')
       }
       
       updateStep('get-url', 'completed')
       addDebugLog(`Current URL: ${tab.url}`)
-      
-      // Step 2: Scrape page content
-      updateStep('scrape-content', 'loading')
-      addDebugLog('Calling scrape API...')
-      const scrapeResult = await apiService.scrapePage(tab.url)
+    } catch (error) {
+      updateStep('get-url', 'error', error instanceof Error ? error.message : 'Unknown error')
+      addDebugLog(`Failed to get URL: ${error}`)
+      setIsScanning(false)
+      return
+    }
+    
+    // Step 2: Scrape page content
+    updateStep('scrape-content', 'loading')
+    addDebugLog('Calling scrape API...')
+    try {
+      scrapeResult = await apiService.scrapePage(tab.url)
       updateStep('scrape-content', 'completed')
       addDebugLog(`Scraped ${scrapeResult.text.length} characters`)
-      
-      // Step 3: Detect AI content
+    } catch (error) {
+      updateStep('scrape-content', 'error', error instanceof Error ? error.message : 'Scraping failed')
+      addDebugLog(`Scrape API failed: ${error}`)
+    }
+    
+    // Step 3: Detect AI content (only if scraping succeeded)
+    if (scrapeResult) {
       updateStep('detect-ai', 'loading')
       addDebugLog('Calling detect API...')
-      const detectResult = await apiService.detectAI(scrapeResult.text)
-      updateStep('detect-ai', 'completed')
-      addDebugLog(`AI likelihood: ${detectResult.aiLikelihoodPercent}%`)
-      
-      // Step 4: Fact-check content
+      try {
+        detectResult = await apiService.detectAI(scrapeResult.text)
+        updateStep('detect-ai', 'completed')
+        addDebugLog(`AI likelihood: ${detectResult.aiLikelihoodPercent}%`)
+        
+        // Add AI detection result
+        results.push({
+          id: '1',
+          type: 'ai-generated',
+          confidence: detectResult.aiLikelihoodPercent,
+          description: `Text analysis suggests ${detectResult.aiLikelihoodPercent}% likelihood of AI generation. Preview: "${detectResult.textPreview.substring(0, 100)}..."`,
+          timestamp: new Date()
+        })
+      } catch (error) {
+        updateStep('detect-ai', 'error', error instanceof Error ? error.message : 'AI detection failed')
+        addDebugLog(`Detect API failed: ${error}`)
+        
+        // Add failed AI detection result
+        results.push({
+          id: '1',
+          type: 'ai-generated',
+          confidence: 0,
+          description: 'AI detection failed - API unavailable or returned an error',
+          timestamp: new Date()
+        })
+      }
+    } else {
+      updateStep('detect-ai', 'error', 'Cannot analyze AI content - scraping failed')
+      results.push({
+        id: '1',
+        type: 'ai-generated',
+        confidence: 0,
+        description: 'AI detection failed - no content to analyze (scraping failed)',
+        timestamp: new Date()
+      })
+    }
+    
+    // Step 4: Fact-check content (only if scraping succeeded)
+    if (scrapeResult) {
       updateStep('fact-check', 'loading')
       addDebugLog('Calling fact-check API...')
-      const factCheckResult = await apiService.factCheck(scrapeResult.text)
-      updateStep('fact-check', 'completed')
-      addDebugLog(`Found ${factCheckResult.claims.length} claims to fact-check`)
-      
-      // Calculate fake news score based on fact-check results
-      const fakeNewsPercentage = apiService.calculateFakeNewsPercentage(factCheckResult.claims)
-      
-      // Step 5: Generate report
-      updateStep('generate-report', 'loading')
-      addDebugLog('Generating analysis report...')
-      
-      const analysisResult: PageAnalysis = {
-        url: scrapeResult.url,
-        title: tab.title || 'Unknown',
-        aiScore: detectResult.aiLikelihoodPercent,
-        fakeNewsScore: fakeNewsPercentage,
-        overallRisk: detectResult.aiLikelihoodPercent > 70 || fakeNewsPercentage > 50 ? 'high' : 
-                    detectResult.aiLikelihoodPercent > 40 || fakeNewsPercentage > 30 ? 'medium' : 'low',
-        results: [
-          {
-            id: '1',
-            type: 'ai-generated',
-            confidence: detectResult.aiLikelihoodPercent,
-            description: `Text analysis suggests ${detectResult.aiLikelihoodPercent}% likelihood of AI generation. Preview: "${detectResult.textPreview.substring(0, 100)}..."`,
-            timestamp: new Date()
-          },
-          {
-            id: '2',
-            type: 'fake-news',
-            confidence: fakeNewsPercentage,
-            description: `${factCheckResult.claims.filter(claim => !claim.isLikelyTrue).length} out of ${factCheckResult.claims.length} claims appear to be false or misleading`,
-            timestamp: new Date()
-          }
-        ],
-        factCheckClaims: factCheckResult.claims,
-        apiData: {
-          scrapedData: scrapeResult,
-          detectionResult: detectResult,
-          factCheckResult: factCheckResult,
+      try {
+        factCheckResult = await apiService.factCheck(scrapeResult.text)
+        updateStep('fact-check', 'completed')
+        addDebugLog(`Found ${factCheckResult.claims.length} claims to fact-check`)
+        
+        // Calculate fake news score based on fact-check results
+        const fakeNewsPercentage = apiService.calculateFakeNewsPercentage(factCheckResult.claims)
+        
+        // Add fact-check result
+        results.push({
+          id: '2',
+          type: 'fake-news',
+          confidence: fakeNewsPercentage,
+          description: `${factCheckResult.claims.filter((claim: any) => !claim.isLikelyTrue).length} out of ${factCheckResult.claims.length} claims appear to be false or misleading`,
           timestamp: new Date()
-        }
+        })
+      } catch (error) {
+        updateStep('fact-check', 'error', error instanceof Error ? error.message : 'Fact-checking failed')
+        addDebugLog(`Fact-check API failed: ${error}`)
+        
+        // Add failed fact-check result
+        results.push({
+          id: '2',
+          type: 'fake-news',
+          confidence: 0,
+          description: 'Fact-checking failed - API unavailable or returned an error',
+          timestamp: new Date()
+        })
       }
-      
-      setAnalysis(analysisResult)
-      saveAnalysisToStorage(analysisResult)
-      updateStep('generate-report', 'completed')
-      addDebugLog('Analysis complete and displayed')
-      
-    } catch (error) {
-      addDebugLog(`Scan error: ${error}`)
-      
-      // Update the current loading step to error
-      const currentLoadingStep = analysisSteps.find(step => step.status === 'loading')
-      if (currentLoadingStep) {
-        updateStep(currentLoadingStep.id, 'error', error instanceof Error ? error.message : 'Unknown error')
-      }
-      
-      // Fallback to mock data for demo
-      const mockAnalysis: PageAnalysis = {
-        url: 'https://example.com',
-        title: 'Example News Article',
-        aiScore: 75,
-        fakeNewsScore: 60,
-        overallRisk: 'medium',
-        results: [
-          {
-            id: '1',
-            type: 'ai-generated',
-            confidence: 85,
-            description: 'Text patterns suggest AI-generated content (API unavailable, using mock data)',
-            timestamp: new Date()
-          },
-          {
-            id: '2',
-            type: 'fake-news',
-            confidence: 70,
-            description: 'Claims lack credible sources (API unavailable, using mock data)',
-            timestamp: new Date()
-          }
-        ],
-        factCheckClaims: [
-          {
-            claim: "The new policy will reduce costs by 50%",
-            isLikelyTrue: false,
-            supportingSources: [
-              {
-                title: "Economic Analysis Report",
-                link: "https://example.com/report1"
-              }
-            ]
-          },
-          {
-            claim: "Climate change affects global temperatures",
-            isLikelyTrue: true,
-            supportingSources: [
-              {
-                title: "NASA Climate Data",
-                link: "https://nasa.gov/climate"
-              },
-              {
-                title: "IPCC Report 2023",
-                link: "https://ipcc.ch/report"
-              }
-            ]
-          }
-        ]
-      }
-      setAnalysis(mockAnalysis)
-      saveAnalysisToStorage(mockAnalysis)
-      updateStep('generate-report', 'completed')
-    } finally {
-      setIsScanning(false)
+    } else {
+      updateStep('fact-check', 'error', 'Cannot fact-check content - scraping failed')
+      results.push({
+        id: '2',
+        type: 'fake-news',
+        confidence: 0,
+        description: 'Fact-checking failed - no content to analyze (scraping failed)',
+        timestamp: new Date()
+      })
     }
+    
+    // Step 5: Sentiment Analysis (only if scraping succeeded)
+    if (scrapeResult) {
+      updateStep('sentiment-analysis', 'loading')
+      addDebugLog('Calling sentiment API...')
+      try {
+        sentimentResult = await apiService.analyzeSentiment(scrapeResult.text)
+        updateStep('sentiment-analysis', 'completed')
+        addDebugLog(`Sentiment analysis completed: ${sentimentResult.summary.substring(0, 100)}...`)
+      } catch (error) {
+        updateStep('sentiment-analysis', 'error', error instanceof Error ? error.message : 'Sentiment analysis failed')
+        addDebugLog(`Sentiment API failed: ${error}`)
+      }
+    } else {
+      updateStep('sentiment-analysis', 'error', 'Cannot analyze sentiment - scraping failed')
+    }
+    
+    // Step 6: Generate report
+    updateStep('generate-report', 'loading')
+    addDebugLog('Generating analysis report...')
+    
+    // Calculate scores (use 0 for failed operations)
+    const aiScore = detectResult ? detectResult.aiLikelihoodPercent : 0
+    const fakeNewsScore = factCheckResult ? apiService.calculateFakeNewsPercentage(factCheckResult.claims) : 0
+    
+    // Determine overall risk based on available data
+    let overallRisk: 'low' | 'medium' | 'high' = 'low'
+    if (aiScore > 70 || fakeNewsScore > 50) {
+      overallRisk = 'high'
+    } else if (aiScore > 40 || fakeNewsScore > 30) {
+      overallRisk = 'medium'
+    }
+    
+    const analysisResult: PageAnalysis = {
+      url: scrapeResult ? scrapeResult.url : tab.url,
+      title: tab.title || 'Unknown',
+      aiScore,
+      fakeNewsScore,
+      overallRisk,
+      results,
+      factCheckClaims: factCheckResult ? factCheckResult.claims : [],
+      apiData: {
+        scrapedData: scrapeResult,
+        detectionResult: detectResult,
+        factCheckResult: factCheckResult,
+        sentimentResult: sentimentResult,
+        timestamp: new Date()
+      }
+    }
+    
+    setAnalysis(analysisResult)
+    saveAnalysisToStorage(analysisResult)
+    updateStep('generate-report', 'completed')
+    addDebugLog('Analysis complete and displayed')
+    
+    setIsScanning(false)
   }
 
   const getRiskColor = (risk: string) => {
@@ -546,6 +589,24 @@ const App: React.FC = () => {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Information and Sentiment Analysis Section */}
+            {analysis.apiData?.sentimentResult && (
+              <div className="card p-4">
+                <h3 className="text-lg font-semibold mb-3">Information and Sentiment Analysis</h3>
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <span className="font-medium text-sm text-blue-800 dark:text-blue-200">
+                      Content Analysis
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {analysis.apiData.sentimentResult.summary}
+                  </p>
                 </div>
               </div>
             )}

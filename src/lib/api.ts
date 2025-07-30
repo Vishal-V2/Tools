@@ -26,10 +26,15 @@ export interface FactCheckResult {
   claims: FactCheckClaim[]
 }
 
+export interface SentimentResult {
+  summary: string
+}
+
 export interface AnalysisResult {
   scrapedData: ScrapedData
   detectionResult: DetectionResult
   factCheckResult?: FactCheckResult
+  sentimentResult?: SentimentResult
   timestamp: Date
 }
 
@@ -119,6 +124,33 @@ class ApiService {
     } catch (error) {
       this.log('Fact-check error:', error)
       throw new Error(`Failed to fact-check content: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Analyze sentiment of content
+  async analyzeSentiment(text: string): Promise<SentimentResult> {
+    this.log('Analyzing sentiment, text length:', text.length)
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/sentiment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      this.log('Sentiment response:', data)
+      
+      return data
+    } catch (error) {
+      this.log('Sentiment error:', error)
+      throw new Error(`Failed to analyze sentiment: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
