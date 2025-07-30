@@ -412,7 +412,7 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <div className="card p-4">
+            {/* <div className="card p-4">
               <h3 className="text-lg font-semibold mb-3">Quick Stats</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="text-center">
@@ -424,7 +424,7 @@ const App: React.FC = () => {
                   <div className="text-gray-600 dark:text-gray-400">Threats Detected</div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 
