@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [analysis, setAnalysis] = useState<PageAnalysis | null>(null)
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>([])
+  const [isImageAnalysisExpanded, setIsImageAnalysisExpanded] = useState(false)
 
   useEffect(() => {
     // Load theme preference from storage
@@ -648,66 +649,147 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Image AI Detection Results Section */}
+            {/* Image AI Detection Results Section - Collapsible */}
             {analysis.apiData?.imageDetectionResults && analysis.apiData.imageDetectionResults.length > 0 && (
               <div className="card p-4">
-                <h3 className="text-lg font-semibold mb-3">Image AI Detection Results</h3>
-                <div className="space-y-3">
-                  {analysis.apiData.imageDetectionResults.map((result, index) => (
-                    <div key={index} className={cn(
-                      "p-3 rounded-lg border-l-4",
-                      result.aiLikelihoodPercent > 70 
-                        ? "bg-red-50 dark:bg-red-900/20 border-red-500" 
-                        : result.aiLikelihoodPercent > 40
-                        ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500"
-                        : "bg-green-50 dark:bg-green-900/20 border-green-500"
-                    )}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          {result.aiLikelihoodPercent > 70 ? (
-                            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                          ) : result.aiLikelihoodPercent > 40 ? (
-                            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                          ) : (
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                          )}
-                          <span className={cn(
-                            "font-medium text-sm",
-                            result.aiLikelihoodPercent > 70 
-                              ? "text-red-800 dark:text-red-200" 
-                              : result.aiLikelihoodPercent > 40
-                              ? "text-yellow-800 dark:text-yellow-200"
-                              : "text-green-800 dark:text-green-200"
-                          )}>
-                            AI Likelihood: {result.aiLikelihoodPercent}%
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-2">
-                        <img 
-                          src={result.url} 
-                          alt="Analyzed image" 
-                          className="max-w-full h-32 object-cover rounded border"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                      
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">
-                        {result.url}
+                <button
+                  onClick={() => setIsImageAnalysisExpanded(!isImageAnalysisExpanded)}
+                  className="w-full flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Eye className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h3 className="text-lg font-semibold">Image Analysis</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {analysis.apiData.imageDetectionResults.length} image{analysis.apiData.imageDetectionResults.length !== 1 ? 's' : ''} analyzed
                       </p>
-                      
-                      {result.rawModelReply && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <strong>Analysis:</strong> {result.rawModelReply}
-                        </p>
-                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {/* Summary indicators */}
+                    {(() => {
+                      const highRisk = analysis.apiData.imageDetectionResults.filter(r => r.aiLikelihoodPercent > 70).length
+                      const mediumRisk = analysis.apiData.imageDetectionResults.filter(r => r.aiLikelihoodPercent > 40 && r.aiLikelihoodPercent <= 70).length
+                      const lowRisk = analysis.apiData.imageDetectionResults.filter(r => r.aiLikelihoodPercent <= 40).length
+                      
+                      return (
+                        <div className="flex items-center space-x-1 text-xs">
+                          {highRisk > 0 && (
+                            <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded">
+                              {highRisk} High
+                            </span>
+                          )}
+                          {mediumRisk > 0 && (
+                            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded">
+                              {mediumRisk} Medium
+                            </span>
+                          )}
+                          {lowRisk > 0 && (
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                              {lowRisk} Low
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
+                    <div className={cn(
+                      "transform transition-transform duration-200",
+                      isImageAnalysisExpanded ? "rotate-180" : ""
+                    )}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </button>
+                
+                {/* Collapsible Content */}
+                {isImageAnalysisExpanded && (
+                  <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    {analysis.apiData.imageDetectionResults.map((result, index) => (
+                      <div key={index} className={cn(
+                        "p-3 rounded-lg border-l-4",
+                        result.aiLikelihoodPercent > 70 
+                          ? "bg-red-50 dark:bg-red-900/20 border-red-500" 
+                          : result.aiLikelihoodPercent > 40
+                          ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500"
+                          : "bg-green-50 dark:bg-green-900/20 border-green-500"
+                      )}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            {result.aiLikelihoodPercent > 70 ? (
+                              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                            ) : result.aiLikelihoodPercent > 40 ? (
+                              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                            ) : (
+                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            )}
+                            <span className={cn(
+                              "font-medium text-sm",
+                              result.aiLikelihoodPercent > 70 
+                                ? "text-red-800 dark:text-red-200" 
+                                : result.aiLikelihoodPercent > 40
+                                ? "text-yellow-800 dark:text-yellow-200"
+                                : "text-green-800 dark:text-green-200"
+                            )}>
+                              AI Likelihood: {result.aiLikelihoodPercent}%
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="mb-2">
+                          <img 
+                            src={result.url} 
+                            alt="Analyzed image" 
+                            className="max-w-full h-32 object-cover rounded border"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">
+                          {result.url}
+                        </p>
+                        
+                        {result.rawModelReply && (
+                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                            <strong>Analysis:</strong> {result.rawModelReply}
+                          </p>
+                        )}
+                        
+                        {/* Show possible AI sources if AI likelihood is high and sources are available */}
+                        {result.topSources && result.topSources.length > 0 && result.aiLikelihoodPercent > 40 && (
+                          <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Possible AI Generation Sources:
+                            </p>
+                            <div className="space-y-1">
+                              {result.topSources.map((source, sourceIndex) => (
+                                <div key={sourceIndex} className="flex justify-between items-center text-xs">
+                                  <span className="capitalize text-gray-600 dark:text-gray-400">
+                                    {source.source}
+                                  </span>
+                                  <span className={cn(
+                                    "font-medium",
+                                    source.confidence > 1
+                                      ? "text-red-600 dark:text-red-400"
+                                      : source.confidence > 0.1
+                                      ? "text-yellow-600 dark:text-yellow-400"
+                                      : "text-gray-500 dark:text-gray-500"
+                                  )}>
+                                    {source.confidence.toFixed(2)}%
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

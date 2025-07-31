@@ -30,10 +30,16 @@ export interface SentimentResult {
   summary: string
 }
 
+export interface AISource {
+  source: string
+  confidence: number
+}
+
 export interface ImageDetectionResult {
   url: string
   aiLikelihoodPercent: number
   rawModelReply: string
+  topSources?: AISource[]
 }
 
 export interface AnalysisResult {
@@ -184,7 +190,8 @@ class ApiService {
       return {
         url: imageUrl,
         aiLikelihoodPercent: data.aiLikelihoodPercent,
-        rawModelReply: data.rawModelReply
+        rawModelReply: data.rawModelReply,
+        topSources: data.topSources
       }
     } catch (error) {
       this.log('Image detection error:', error)
@@ -209,11 +216,25 @@ class ApiService {
         results.push(result)
       } catch (error) {
         this.log(`Failed to analyze image ${imageUrl}:`, error)
-        // Add failed result to maintain consistency
+        
+        // Check if this is a skipped image due to unsupported format
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        if (errorMessage.includes('skipAnalysis') || errorMessage.includes('Unsupported image format') || errorMessage.includes('HTTP error! status: 400')) {
+          this.log(`Unsupported image format detected: ${imageUrl}`)
+          // Add result with user-friendly message for unsupported formats
+          results.push({
+            url: imageUrl,
+            aiLikelihoodPercent: 0,
+            rawModelReply: 'This format is not supported'
+          })
+          continue
+        }
+        
+        // Add failed result for other types of errors
         results.push({
           url: imageUrl,
           aiLikelihoodPercent: 0,
-          rawModelReply: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          rawModelReply: `Analysis failed: ${errorMessage}`
         })
       }
     }
