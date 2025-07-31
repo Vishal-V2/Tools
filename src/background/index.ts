@@ -1,4 +1,4 @@
-// Background service worker for HackSky AI Detector
+// Background service worker for SafeClick
 
 console.log('[HackSky Background] Service worker initialized')
 

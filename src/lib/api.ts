@@ -1,4 +1,4 @@
-// API service for HackSky AI Detector
+// API service for SafeClick
 
 export interface ScrapedData {
   url: string

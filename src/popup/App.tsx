@@ -224,7 +224,7 @@ const App: React.FC = () => {
           id: '1',
           type: 'ai-generated',
           confidence: detectResult.aiLikelihoodPercent,
-          description: `Text analysis suggests ${detectResult.aiLikelihoodPercent}% likelihood of AI generation. Preview: "${detectResult.textPreview.substring(0, 100)}..."`,
+          description: `Text analysis suggests ${getAIRiskLevel(detectResult.aiLikelihoodPercent).toLowerCase()} likelihood of AI generation`,
           timestamp: new Date()
         })
       } catch (error) {
@@ -384,11 +384,29 @@ const App: React.FC = () => {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'low': return 'text-success-600 dark:text-success-400'
-      case 'medium': return 'text-warning-600 dark:text-warning-400'
-      case 'high': return 'text-danger-600 dark:text-danger-400'
-      default: return 'text-gray-600 dark:text-gray-400'
+      case 'high': return 'text-danger-600'
+      case 'medium': return 'text-warning-600'
+      case 'low': return 'text-success-600'
+      default: return 'text-gray-600'
     }
+  }
+
+  // Helper function to convert AI percentage to qualitative risk level
+  const getAIRiskLevel = (percentage: number): string => {
+    if (percentage >= 80) return 'Very High'
+    if (percentage >= 60) return 'High'
+    if (percentage >= 40) return 'Moderate'
+    if (percentage >= 20) return 'Low'
+    return 'Very Low'
+  }
+
+  // Helper function to get color for AI risk level
+  const getAIRiskColor = (percentage: number): string => {
+    if (percentage >= 80) return 'text-red-600'
+    if (percentage >= 60) return 'text-red-500'
+    if (percentage >= 40) return 'text-yellow-600'
+    if (percentage >= 20) return 'text-green-500'
+    return 'text-green-600'
   }
 
   const getRiskIcon = (risk: string) => {
@@ -406,7 +424,7 @@ const App: React.FC = () => {
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           <Shield className="w-6 h-6 text-primary-600" />
-          <h1 className="text-lg font-bold">HackSky AI Detector</h1>
+          <h1 className="text-lg font-bold">SafeClick</h1>
         </div>
         <div className="flex items-center space-x-2">
           {/* API Status Indicator */}
@@ -506,8 +524,10 @@ const App: React.FC = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="text-2xl font-bold text-primary-600">{analysis.aiScore}%</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">AI Generated</div>
+                      <div className={cn("text-2xl font-bold", getAIRiskColor(analysis.aiScore))}>
+                        {getAIRiskLevel(analysis.aiScore)}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">AI Risk</div>
                     </div>
                     <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                       <div className="text-2xl font-bold text-warning-600">{analysis.fakeNewsScore}%</div>
@@ -826,7 +846,7 @@ const App: React.FC = () => {
             <div className="card p-4">
               <h3 className="text-lg font-semibold mb-3">About</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                HackSky AI Detector helps you identify AI-generated content and potential fake news threats.
+                SafeClick helps you identify AI-generated content and potential fake news threats.
                 Stay safe online with our advanced detection algorithms.
               </p>
             </div>

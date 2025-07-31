@@ -1,4 +1,4 @@
-// Content script for HackSky AI Detector
+// Content script for SafeClick
 
 interface PageContent {
   title: string

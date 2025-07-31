@@ -1,4 +1,4 @@
-// Global type declarations for HackSky AI Detector
+// Global type declarations for SafeClick
 
 declare global {
   interface Window {
