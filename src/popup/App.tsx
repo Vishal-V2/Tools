@@ -114,6 +114,12 @@ const App: React.FC = () => {
         status: 'pending'
       },
       {
+        id: 'image-analysis',
+        title: 'Image Analysis',
+        description: 'Detecting AI-generated images',
+        status: 'pending'
+      },
+      {
         id: 'generate-report',
         title: 'Generating Analysis Report',
         description: 'Creating comprehensive risk assessment',
@@ -169,6 +175,7 @@ const App: React.FC = () => {
     let detectResult: any = null
     let factCheckResult: any = null
     let sentimentResult: any = null
+    let imageAnalysisResults: any[] = []
     const results: ScanResult[] = []
     
     try {
@@ -303,7 +310,26 @@ const App: React.FC = () => {
       updateStep('sentiment-analysis', 'error', 'Cannot analyze sentiment - scraping failed')
     }
     
-    // Step 6: Generate report
+    // Step 6: Image Analysis (only if scraping succeeded and images exist)
+    if (scrapeResult && scrapeResult.images && scrapeResult.images.length > 0) {
+      updateStep('image-analysis', 'loading')
+      addDebugLog(`Analyzing ${scrapeResult.images.length} images for AI detection...`)
+      try {
+        imageAnalysisResults = await apiService.analyzeImages(scrapeResult.images)
+        updateStep('image-analysis', 'completed')
+        addDebugLog(`Image analysis completed for ${imageAnalysisResults.length} images`)
+      } catch (error) {
+        updateStep('image-analysis', 'error', error instanceof Error ? error.message : 'Image analysis failed')
+        addDebugLog(`Image analysis failed: ${error}`)
+      }
+    } else if (scrapeResult && (!scrapeResult.images || scrapeResult.images.length === 0)) {
+      updateStep('image-analysis', 'completed')
+      addDebugLog('No images found on page to analyze')
+    } else {
+      updateStep('image-analysis', 'error', 'Cannot analyze images - scraping failed')
+    }
+    
+    // Step 7: Generate report
     updateStep('generate-report', 'loading')
     addDebugLog('Generating analysis report...')
     
@@ -319,6 +345,7 @@ const App: React.FC = () => {
       overallRisk = 'medium'
     }
     
+    // Create final analysis result
     const analysisResult: PageAnalysis = {
       url: scrapeResult ? scrapeResult.url : tab.url,
       title: tab.title || 'Unknown',
@@ -328,10 +355,20 @@ const App: React.FC = () => {
       results,
       factCheckClaims: factCheckResult ? factCheckResult.claims : [],
       apiData: {
-        scrapedData: scrapeResult,
-        detectionResult: detectResult,
+        scrapedData: scrapeResult || {
+          title: 'Analysis Failed',
+          content: 'Unable to scrape page content',
+          images: [],
+          links: []
+        },
+        detectionResult: detectResult || {
+          isAiGenerated: false,
+          confidence: 0,
+          explanation: 'AI detection failed'
+        },
         factCheckResult: factCheckResult,
         sentimentResult: sentimentResult,
+        imageDetectionResults: imageAnalysisResults,
         timestamp: new Date()
       }
     }
@@ -607,6 +644,69 @@ const App: React.FC = () => {
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {analysis.apiData.sentimentResult.summary}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Image AI Detection Results Section */}
+            {analysis.apiData?.imageDetectionResults && analysis.apiData.imageDetectionResults.length > 0 && (
+              <div className="card p-4">
+                <h3 className="text-lg font-semibold mb-3">Image AI Detection Results</h3>
+                <div className="space-y-3">
+                  {analysis.apiData.imageDetectionResults.map((result, index) => (
+                    <div key={index} className={cn(
+                      "p-3 rounded-lg border-l-4",
+                      result.aiLikelihoodPercent > 70 
+                        ? "bg-red-50 dark:bg-red-900/20 border-red-500" 
+                        : result.aiLikelihoodPercent > 40
+                        ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500"
+                        : "bg-green-50 dark:bg-green-900/20 border-green-500"
+                    )}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          {result.aiLikelihoodPercent > 70 ? (
+                            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                          ) : result.aiLikelihoodPercent > 40 ? (
+                            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                          ) : (
+                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          )}
+                          <span className={cn(
+                            "font-medium text-sm",
+                            result.aiLikelihoodPercent > 70 
+                              ? "text-red-800 dark:text-red-200" 
+                              : result.aiLikelihoodPercent > 40
+                              ? "text-yellow-800 dark:text-yellow-200"
+                              : "text-green-800 dark:text-green-200"
+                          )}>
+                            AI Likelihood: {result.aiLikelihoodPercent}%
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-2">
+                        <img 
+                          src={result.url} 
+                          alt="Analyzed image" 
+                          className="max-w-full h-32 object-cover rounded border"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                      
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 break-all">
+                        {result.url}
+                      </p>
+                      
+                      {result.rawModelReply && (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <strong>Analysis:</strong> {result.rawModelReply}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

@@ -30,11 +30,18 @@ export interface SentimentResult {
   summary: string
 }
 
+export interface ImageDetectionResult {
+  url: string
+  aiLikelihoodPercent: number
+  rawModelReply: string
+}
+
 export interface AnalysisResult {
   scrapedData: ScrapedData
   detectionResult: DetectionResult
   factCheckResult?: FactCheckResult
   sentimentResult?: SentimentResult
+  imageDetectionResults?: ImageDetectionResult[]
   timestamp: Date
 }
 
@@ -152,6 +159,66 @@ class ApiService {
       this.log('Sentiment error:', error)
       throw new Error(`Failed to analyze sentiment: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
+  }
+
+  // Detect AI in image from URL
+  async detectAIInImage(imageUrl: string): Promise<ImageDetectionResult> {
+    this.log('Detecting AI in image:', imageUrl)
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/image-detect-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: imageUrl })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      this.log('Image detection response:', data)
+      
+      return {
+        url: imageUrl,
+        aiLikelihoodPercent: data.aiLikelihoodPercent,
+        rawModelReply: data.rawModelReply
+      }
+    } catch (error) {
+      this.log('Image detection error:', error)
+      throw new Error(`Failed to detect AI in image: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Analyze multiple images for AI detection
+  async analyzeImages(imageUrls: string[]): Promise<ImageDetectionResult[]> {
+    this.log('Analyzing images for AI detection, count:', imageUrls.length)
+    
+    if (!imageUrls || imageUrls.length === 0) {
+      return []
+    }
+
+    const results: ImageDetectionResult[] = []
+    
+    // Process images sequentially to avoid overwhelming the API
+    for (const imageUrl of imageUrls) {
+      try {
+        const result = await this.detectAIInImage(imageUrl)
+        results.push(result)
+      } catch (error) {
+        this.log(`Failed to analyze image ${imageUrl}:`, error)
+        // Add failed result to maintain consistency
+        results.push({
+          url: imageUrl,
+          aiLikelihoodPercent: 0,
+          rawModelReply: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        })
+      }
+    }
+    
+    return results
   }
 
   // Complete analysis workflow with optional fact-checking
