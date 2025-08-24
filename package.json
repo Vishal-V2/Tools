@@ -1,7 +1,7 @@
 {
-  "name": "factora-ai-detector",
+  "name": "factora-content-detector",
   "version": "1.0.0",
-  "description": "AI-powered threat interception system for detecting fake content and honeytraps",
+  "description": "Advanced threat interception system for detecting fake content and honeytraps",
   "main": "index.js",
   "scripts": {
     "dev": "vite",

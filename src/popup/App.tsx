@@ -122,13 +122,13 @@ const App: React.FC = () => {
       {
         id: 'image-analysis',
         title: 'Image Analysis',
-        description: 'Detecting AI-generated images',
+        description: 'Detecting generated images',
         status: 'pending'
       },
       {
         id: 'summarization',
         title: 'Content Summarization',
-        description: 'Generating AI-powered bullet point summary',
+        description: 'Generating advanced bullet point summary',
         status: 'pending'
       },
       {
@@ -1033,7 +1033,7 @@ const App: React.FC = () => {
                   )}
                   
                   <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                    Powered by Groq AI • Content analyzed: {analysis.apiData.scrapedData.text.length} characters
+                    Content analyzed: {analysis.apiData.scrapedData.text.length} characters
                   </div>
                 </div>
               )}

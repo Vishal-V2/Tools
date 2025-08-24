@@ -1,6 +1,6 @@
 # Fact-Checking Implementation
 
-This document describes the fact-checking functionality that has been implemented in the Factora AI Detector Chrome extension.
+This document describes the fact-checking functionality that has been implemented in the Factora Content Detector Chrome extension.
 
 ## Overview
 
@@ -83,9 +83,9 @@ The server already includes the fact-checking functionality:
 - `controllers/factCheckController.js` - Core fact-checking logic
 
 ### Process
-1. **Extract claims** from input text using Gemini AI
+1. **Extract claims** from input text using advanced algorithms
 2. **Search web** for each claim using Google Custom Search API
-3. **Validate claims** against search results using Gemini AI
+3. **Validate claims** against search results using content analysis
 4. **Return structured results** with supporting sources
 
 ## Testing
@@ -93,7 +93,7 @@ The server already includes the fact-checking functionality:
 ### Prerequisites
 1. Start the server: `cd factora-server && node server.js`
 2. Ensure environment variables are set:
-   - `GEMINI_API_KEY`
+   - `API_KEY`
    - `GOOGLE_SEARCH_API_KEY`
    - `GOOGLE_SEARCH_ENGINE_ID`
 
@@ -108,12 +108,12 @@ The server already includes the fact-checking functionality:
 ### Expected Results
 
 #### Overview Tab
-- Shows AI generation percentage
+- Shows content generation percentage
 - Shows fake claims percentage (calculated from fact-check)
 - Risk level considers both metrics
 
 #### Analysis Tab
-- Shows detailed AI analysis
+- Shows detailed content analysis
 - Shows **Factual Analysis** section with:
   - Individual claims with truth assessment
   - Color-coded backgrounds (green/red)
@@ -132,6 +132,6 @@ If the API is unavailable, the extension shows mock fact-check data:
 ✅ **Real-time fact-checking** of web page content
 ✅ **Visual indicators** for claim truthfulness
 ✅ **Supporting sources** with clickable links
-✅ **Integrated workflow** with AI detection
+✅ **Integrated workflow** with content detection
 ✅ **Fallback handling** when API is unavailable
 ✅ **Responsive UI** with dark mode support

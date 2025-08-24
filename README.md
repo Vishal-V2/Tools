@@ -1,10 +1,10 @@
-# Factora AI Detector
+# Factora Content Detector
 
-A sophisticated Chrome extension that proactively identifies and disrupts AI-generated fake content and honeytrap operations on the web.
+A sophisticated Chrome extension that proactively identifies and disrupts fake content and honeytrap operations on the web.
 
 ## Features
 
-- 🔍 **AI Content Detection**: Analyzes web pages for AI-generated content patterns
+- 🔍 **Content Detection**: Analyzes web pages for generated content patterns
 - 🚨 **Fake News Detection**: Identifies potential fake news and misinformation
 - 🎨 **Modern UI**: Clean, responsive interface with dark/light theme support
 - ⚡ **Real-time Analysis**: Instant scanning and analysis of web content
@@ -77,9 +77,9 @@ npm run build
 
 ## Features in Detail
 
-### AI Content Detection
+### Content Detection
 - Analyzes text patterns and writing styles
-- Identifies AI-generated content markers
+- Identifies generated content markers
 - Provides confidence scores for detection
 
 ### Fake News Detection
@@ -90,7 +90,7 @@ npm run build
 ### Risk Assessment
 - **Low Risk**: Content appears genuine
 - **Medium Risk**: Some suspicious indicators
-- **High Risk**: Strong evidence of AI generation or fake news
+- **High Risk**: Strong evidence of generated content or fake news
 
 ### Settings
 - **Theme Toggle**: Switch between light and dark themes
@@ -111,7 +111,7 @@ MIT License - see LICENSE file for details
 ## Roadmap
 
 - [ ] Integration with external fact-checking APIs
-- [ ] Machine learning model for improved detection
+- [ ] Advanced algorithms for improved detection
 - [ ] Browser action badge with real-time alerts
 - [ ] Export analysis reports
 - [ ] Custom detection rules

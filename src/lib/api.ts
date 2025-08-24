@@ -183,7 +183,7 @@ class ApiService {
     }
   }
 
-  // Summarize content using Groq
+  // Summarize content
   async summarizeContent(text: string): Promise<SummarizationResult> {
     this.log('Summarizing content, text length:', text.length)
     
@@ -214,7 +214,7 @@ class ApiService {
     }
   }
 
-  // Answer questions using Groq
+  // Answer questions
   async answerQuestion(question: string, content: string): Promise<QAResult> {
     this.log(`Answering question, question length: ${question.length}, content length: ${content.length}`)
     

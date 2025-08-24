@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Factora AI Detector",
+  "name": "Factora Content Detector",
   "version": "1.0.0",
-  "description": "AI-powered threat interception system for detecting fake content and honeytraps",
+  "description": "Advanced threat interception system for detecting fake content and honeytraps",
   "permissions": [
     "activeTab",
     "storage",
