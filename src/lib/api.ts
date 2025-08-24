@@ -30,6 +30,21 @@ export interface SentimentResult {
   summary: string
 }
 
+export interface SummarizationResult {
+  summary: string
+  model: string
+  input_length: number
+  summary_length: number
+}
+
+export interface QAResult {
+  question: string
+  answer: string
+  model: string
+  content_length: number
+  answer_length: number
+}
+
 export interface AISource {
   source: string
   confidence: number
@@ -47,6 +62,7 @@ export interface AnalysisResult {
   detectionResult: DetectionResult
   factCheckResult?: FactCheckResult
   sentimentResult?: SentimentResult
+  summarizationResult?: SummarizationResult
   imageDetectionResults?: ImageDetectionResult[]
   timestamp: Date
 }
@@ -164,6 +180,68 @@ class ApiService {
     } catch (error) {
       this.log('Sentiment error:', error)
       throw new Error(`Failed to analyze sentiment: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Summarize content using Groq
+  async summarizeContent(text: string): Promise<SummarizationResult> {
+    this.log('Summarizing content, text length:', text.length)
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/summarize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: text })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      this.log('Summarization response:', data)
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Summarization failed')
+      }
+      
+      return data
+    } catch (error) {
+      this.log('Summarization error:', error)
+      throw new Error(`Failed to summarize content: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Answer questions using Groq
+  async answerQuestion(question: string, content: string): Promise<QAResult> {
+    this.log(`Answering question, question length: ${question.length}, content length: ${content.length}`)
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/qa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question, content })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      this.log('Q&A response:', data)
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Question answering failed')
+      }
+      
+      return data
+    } catch (error) {
+      this.log('Q&A error:', error)
+      throw new Error(`Failed to answer question: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 

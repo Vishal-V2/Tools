@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, AlertTriangle, CheckCircle, Info, Moon, Sun, Settings, Zap, Eye, BarChart3, Wifi, WifiOff, ExternalLink } from 'lucide-react'
+import { Shield, AlertTriangle, CheckCircle, Info, Moon, Sun, Settings, Zap, Eye, BarChart3, Wifi, WifiOff, ExternalLink, FileText, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { apiService, AnalysisResult, FactCheckClaim } from '@/lib/api'
+import { apiService, AnalysisResult, FactCheckClaim, SummarizationResult, QAResult } from '@/lib/api'
 import DebugPanel from '@/components/DebugPanel'
 import AnalysisProgress, { AnalysisStep } from '@/components/AnalysisProgress'
 
@@ -26,9 +26,14 @@ interface PageAnalysis {
 
 const App: React.FC = () => {
   const [isDark, setIsDark] = useState(false)
-  const [currentTab, setCurrentTab] = useState<'overview' | 'analysis' | 'settings'>('overview')
+  const [currentTab, setCurrentTab] = useState<'overview' | 'analysis' | 'qa' | 'settings'>('overview')
   const [isScanning, setIsScanning] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState(false)
+  const [isAnswering, setIsAnswering] = useState(false)
   const [analysis, setAnalysis] = useState<PageAnalysis | null>(null)
+  const [summarization, setSummarization] = useState<SummarizationResult | null>(null)
+  const [qaResult, setQaResult] = useState<QAResult | null>(null)
+  const [question, setQuestion] = useState('')
   const [apiConnected, setApiConnected] = useState<boolean | null>(null)
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>([])
   const [isImageAnalysisExpanded, setIsImageAnalysisExpanded] = useState(false)
@@ -118,6 +123,12 @@ const App: React.FC = () => {
         id: 'image-analysis',
         title: 'Image Analysis',
         description: 'Detecting AI-generated images',
+        status: 'pending'
+      },
+      {
+        id: 'summarization',
+        title: 'Content Summarization',
+        description: 'Generating AI-powered bullet point summary',
         status: 'pending'
       },
       {
@@ -330,7 +341,24 @@ const App: React.FC = () => {
       updateStep('image-analysis', 'error', 'Cannot analyze images - scraping failed')
     }
     
-    // Step 7: Generate report
+    // Step 7: Content Summarization (only if scraping succeeded)
+    if (scrapeResult) {
+      updateStep('summarization', 'loading')
+      addDebugLog('Generating content summary...')
+      try {
+        const summarizationResult = await apiService.summarizeContent(scrapeResult.text)
+        setSummarization(summarizationResult)
+        updateStep('summarization', 'completed')
+        addDebugLog('Content summarization completed successfully')
+      } catch (error) {
+        updateStep('summarization', 'error', error instanceof Error ? error.message : 'Summarization failed')
+        addDebugLog(`Summarization failed: ${error}`)
+      }
+    } else {
+      updateStep('summarization', 'error', 'Cannot summarize content - scraping failed')
+    }
+    
+    // Step 8: Generate report
     updateStep('generate-report', 'loading')
     addDebugLog('Generating analysis report...')
     
@@ -369,6 +397,7 @@ const App: React.FC = () => {
         },
         factCheckResult: factCheckResult,
         sentimentResult: sentimentResult,
+        summarizationResult: summarization || undefined,
         imageDetectionResults: imageAnalysisResults,
         timestamp: new Date()
       }
@@ -380,6 +409,56 @@ const App: React.FC = () => {
     addDebugLog('Analysis complete and displayed')
     
     setIsScanning(false)
+  }
+
+  const summarizeCurrentPage = async () => {
+    if (!analysis?.apiData?.scrapedData?.text) {
+      // If no analysis exists, we need to scrape the page first
+      await scanCurrentPage()
+      return
+    }
+
+    setIsSummarizing(true)
+    addDebugLog('Starting content summarization...')
+    
+    try {
+      const text = analysis.apiData.scrapedData.text
+      addDebugLog(`Summarizing ${text.length} characters of content...`)
+      
+      const summarizationResult = await apiService.summarizeContent(text)
+      setSummarization(summarizationResult)
+      addDebugLog('Summarization completed successfully')
+      
+    } catch (error) {
+      addDebugLog(`Summarization failed: ${error}`)
+      // Keep existing summarization if available
+    } finally {
+      setIsSummarizing(false)
+    }
+  }
+
+  const askQuestion = async () => {
+    if (!question.trim() || !analysis?.apiData?.scrapedData?.text) {
+      return
+    }
+
+    setIsAnswering(true)
+    addDebugLog('Starting Q&A...')
+    
+    try {
+      const text = analysis.apiData.scrapedData.text
+      addDebugLog(`Asking question: "${question}" about ${text.length} characters of content...`)
+      
+      const qaResult = await apiService.answerQuestion(question.trim(), text)
+      setQaResult(qaResult)
+      addDebugLog('Q&A completed successfully')
+      
+    } catch (error) {
+      addDebugLog(`Q&A failed: ${error}`)
+      // Keep existing Q&A result if available
+    } finally {
+      setIsAnswering(false)
+    }
   }
 
   const getRiskColor = (risk: string) => {
@@ -473,6 +552,18 @@ const App: React.FC = () => {
           Analysis
         </button>
         <button
+          onClick={() => setCurrentTab('qa')}
+          className={cn(
+            "flex-1 py-3 px-4 text-sm font-medium transition-colors",
+            currentTab === 'qa'
+              ? "text-primary-600 border-b-2 border-primary-600"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          )}
+        >
+          <HelpCircle className="w-4 h-4 inline mr-2" />
+          Q&A
+        </button>
+        <button
           onClick={() => setCurrentTab('settings')}
           className={cn(
             "flex-1 py-3 px-4 text-sm font-medium transition-colors",
@@ -481,7 +572,7 @@ const App: React.FC = () => {
               : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           )}
         >
-          <Settings className="w-4 h-4 inline mr-2" />
+          <Settings className="w-5 h-5 inline mr-2" />
           Settings
         </button>
       </div>
@@ -493,14 +584,27 @@ const App: React.FC = () => {
             <div className="card p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Current Page</h2>
-                <button
-                  onClick={scanCurrentPage}
-                  disabled={isScanning}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <Zap className="w-4 h-4" />
-                  {isScanning ? 'Scanning...' : 'Scan Page'}
-                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={scanCurrentPage}
+                    disabled={isScanning}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    <Zap className="w-4 h-4" />
+                    {isScanning ? 'Scanning...' : 'Scan Page'}
+                  </button>
+                  <button
+                    onClick={summarizeCurrentPage}
+                    disabled={isSummarizing || !analysis?.apiData?.scrapedData?.text}
+                    className={cn(
+                      "btn-secondary flex items-center space-x-2",
+                      !analysis?.apiData?.scrapedData?.text && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {isSummarizing ? 'Summarizing...' : 'Summarize'}
+                  </button>
+                </div>
               </div>
               
               {/* Progress Checklist */}
@@ -542,6 +646,24 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Summarization Result */}
+                  {(summarization || analysis.apiData?.summarizationResult) && (
+                    <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FileText className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <span className="font-medium text-sm text-green-800 dark:text-green-200">
+                          Content Summary
+                        </span>
+                      </div>
+                      <div className="text-xs text-green-600 dark:text-green-400 mb-2">
+                        Model: {(summarization || analysis.apiData?.summarizationResult)?.model} • Input: {(summarization || analysis.apiData?.summarizationResult)?.input_length} chars • Summary: {(summarization || analysis.apiData?.summarizationResult)?.summary_length} chars
+                      </div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        {(summarization || analysis.apiData?.summarizationResult)?.summary}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -573,7 +695,19 @@ const App: React.FC = () => {
         {currentTab === 'analysis' && analysis && (
           <div className="space-y-4">
             <div className="card p-4">
-              <h3 className="text-lg font-semibold mb-3">Detailed Analysis</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold">Detailed Analysis</h3>
+                {!summarization && !analysis.apiData?.summarizationResult && (
+                  <button
+                    onClick={summarizeCurrentPage}
+                    disabled={isSummarizing}
+                    className="btn-secondary flex items-center space-x-2 text-sm"
+                  >
+                    <FileText className="w-4 h-4" />
+                    {isSummarizing ? 'Summarizing...' : 'Summarize Content'}
+                  </button>
+                )}
+              </div>
               <div className="space-y-3">
                 {analysis.results.map((result) => (
                   <div key={result.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -665,6 +799,27 @@ const App: React.FC = () => {
                   <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {analysis.apiData.sentimentResult.summary}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Content Summarization Section */}
+            {(summarization || analysis.apiData?.summarizationResult) && (
+              <div className="card p-4">
+                <h3 className="text-lg font-semibold mb-3">Content Summarization</h3>
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-500">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FileText className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <span className="font-medium text-sm text-green-800 dark:text-green-200">
+                      AI-Generated Summary
+                    </span>
+                  </div>
+                  <div className="text-xs text-green-600 dark:text-green-400 mb-3">
+                    <strong>Model:</strong> {(summarization || analysis.apiData?.summarizationResult)?.model} • <strong>Input:</strong> {(summarization || analysis.apiData?.summarizationResult)?.input_length} characters • <strong>Summary:</strong> {(summarization || analysis.apiData?.summarizationResult)?.summary_length} characters
+                  </div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {(summarization || analysis.apiData?.summarizationResult)?.summary}
+                  </div>
                 </div>
               </div>
             )}
@@ -812,6 +967,77 @@ const App: React.FC = () => {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {currentTab === 'qa' && (
+          <div className="space-y-4">
+            <div className="card p-4">
+              <h3 className="text-lg font-semibold mb-3 flex items-center space-x-2">
+                <HelpCircle className="w-5 h-5 text-blue-600" />
+                <span>Ask Questions About This Page</span>
+              </h3>
+              
+              {!analysis?.apiData?.scrapedData?.text ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <HelpCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>Scan a page first to enable Q&A functionality</p>
+                  <button
+                    onClick={scanCurrentPage}
+                    disabled={isScanning}
+                    className="btn-primary mt-3 flex items-center space-x-2 mx-auto"
+                  >
+                    <Zap className="w-4 h-4" />
+                    {isScanning ? 'Scanning...' : 'Scan Page'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Your Question
+                    </label>
+                    <textarea
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      placeholder="Ask any question about the page content..."
+                      className="input h-20 resize-none"
+                      disabled={isAnswering}
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={askQuestion}
+                    disabled={!question.trim() || isAnswering}
+                    className="btn-primary w-full flex items-center justify-center space-x-2"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    {isAnswering ? 'Getting Answer...' : 'Ask Question'}
+                  </button>
+                  
+                  {qaResult && (
+                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                        <span className="font-medium text-sm text-blue-800 dark:text-blue-200">
+                          Answer
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+                        <strong>Question:</strong> {qaResult.question} • <strong>Model:</strong> {qaResult.model} • <strong>Content:</strong> {qaResult.content_length} chars • <strong>Answer:</strong> {qaResult.answer_length} chars
+                      </div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {qaResult.answer}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                    Powered by Groq AI • Content analyzed: {analysis.apiData.scrapedData.text.length} characters
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
