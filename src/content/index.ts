@@ -1,4 +1,4 @@
-// Content script for SafeClick
+// Content script for Factora
 
 interface PageContent {
   title: string
@@ -17,7 +17,7 @@ class ContentAnalyzer {
   private init() {
     // Listen for messages from popup
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-      console.log('[HackSky Content] Received message:', request)
+      console.log('[Factora Content] Received message:', request)
       
       if (request.type === 'ANALYZE_PAGE') {
         this.analyzeCurrentPage().then(sendResponse)
@@ -26,7 +26,7 @@ class ContentAnalyzer {
       
       if (request.type === 'GET_CURRENT_URL') {
         const currentUrl = window.location.href
-        console.log('[HackSky Content] Current URL:', currentUrl)
+        console.log('[Factora Content] Current URL:', currentUrl)
         sendResponse({ url: currentUrl })
         return true
       }
@@ -39,7 +39,7 @@ class ContentAnalyzer {
   private async checkAutoScan() {
     chrome.storage.local.get(['autoScan'], (result) => {
       if (result.autoScan) {
-        console.log('[HackSky Content] Auto-scan enabled, analyzing page...')
+        console.log('[Factora Content] Auto-scan enabled, analyzing page...')
         setTimeout(() => {
           this.analyzeCurrentPage()
         }, 2000) // Wait for page to load
@@ -49,16 +49,16 @@ class ContentAnalyzer {
 
   private async analyzeCurrentPage(): Promise<any> {
     if (this.isAnalyzing) {
-      console.log('[HackSky Content] Analysis already in progress')
+              console.log('[Factora Content] Analysis already in progress')
       return { error: 'Analysis already in progress' }
     }
 
     this.isAnalyzing = true
-    console.log('[HackSky Content] Starting page analysis...')
+          console.log('[Factora Content] Starting page analysis...')
 
     try {
       const content = this.extractPageContent()
-      console.log('[HackSky Content] Extracted content:', {
+              console.log('[Factora Content] Extracted content:', {
         title: content.title,
         textLength: content.text.length,
         url: content.url
@@ -68,7 +68,7 @@ class ContentAnalyzer {
       return { success: true, content }
     } catch (error) {
       this.isAnalyzing = false
-      console.error('[HackSky Content] Analysis error:', error)
+              console.error('[Factora Content] Analysis error:', error)
       return { error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }
@@ -87,7 +87,7 @@ class ContentAnalyzer {
   }
 
   private extractTextContent(): string {
-    console.log('[HackSky Content] Extracting text content...')
+          console.log('[Factora Content] Extracting text content...')
     
     // Remove script and style elements
     const scripts = document.querySelectorAll('script, style')
@@ -111,7 +111,7 @@ class ContentAnalyzer {
       const element = document.querySelector(selector)
       if (element) {
         content += element.textContent || ''
-        console.log(`[HackSky Content] Found content with selector: ${selector}`)
+        console.log(`[Factora Content] Found content with selector: ${selector}`)
         break
       }
     }
@@ -119,7 +119,7 @@ class ContentAnalyzer {
     // Fallback to body content
     if (!content) {
       content = document.body.textContent || ''
-      console.log('[HackSky Content] Using fallback body content')
+      console.log('[Factora Content] Using fallback body content')
     }
 
     // Clean up the text
@@ -128,7 +128,7 @@ class ContentAnalyzer {
       .trim()
       .substring(0, 10000) // Limit content length
     
-    console.log(`[HackSky Content] Extracted ${cleanedContent.length} characters`)
+          console.log(`[Factora Content] Extracted ${cleanedContent.length} characters`)
     return cleanedContent
   }
 
@@ -140,7 +140,7 @@ class ContentAnalyzer {
 
 // Initialize the analyzer
 const analyzer = new ContentAnalyzer()
-console.log('[HackSky Content] Content script initialized')
+console.log('[Factora Content] Content script initialized')
 
 // Expose to window for debugging
-window.hackskyAnalyzer = analyzer 
+window.factoraAnalyzer = analyzer 

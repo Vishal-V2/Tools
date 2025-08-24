@@ -1,8 +1,8 @@
-// Global type declarations for SafeClick
+// Global type declarations for Factora
 
 declare global {
   interface Window {
-    hackskyAnalyzer?: any
+    factoraAnalyzer?: any
   }
 }
 

@@ -1,4 +1,4 @@
-# HackSky AI Detector
+# Factora AI Detector
 
 A sophisticated Chrome extension that proactively identifies and disrupts AI-generated fake content and honeytrap operations on the web.
 
@@ -22,7 +22,7 @@ A sophisticated Chrome extension that proactively identifies and disrupts AI-gen
 ## Project Structure
 
 ```
-hacksky1/
+factora1/
 ├── src/
 │   ├── popup/           # Extension popup UI
 │   ├── background/      # Service worker

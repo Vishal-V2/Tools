@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "HackSky AI Detector",
+  "name": "Factora AI Detector",
   "version": "1.0.0",
   "description": "AI-powered threat interception system for detecting fake content and honeytraps",
   "permissions": [
@@ -13,7 +13,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "HackSky AI Detector"
+    "default_title": "Factora AI Detector"
   },
   "background": {
     "service_worker": "background.js"

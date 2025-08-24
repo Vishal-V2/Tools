@@ -1,6 +1,6 @@
 # Fact-Checking Implementation
 
-This document describes the fact-checking functionality that has been implemented in the HackSky AI Detector Chrome extension.
+This document describes the fact-checking functionality that has been implemented in the Factora AI Detector Chrome extension.
 
 ## Overview
 
@@ -91,7 +91,7 @@ The server already includes the fact-checking functionality:
 ## Testing
 
 ### Prerequisites
-1. Start the server: `cd hacksky-server && node server.js`
+1. Start the server: `cd factora-server && node server.js`
 2. Ensure environment variables are set:
    - `GEMINI_API_KEY`
    - `GOOGLE_SEARCH_API_KEY`

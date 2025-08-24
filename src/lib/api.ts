@@ -1,4 +1,4 @@
-// API service for SafeClick
+// API service for Factora
 
 export interface ScrapedData {
   url: string
@@ -72,7 +72,7 @@ class ApiService {
 
   // Debug logging
   private log(message: string, data?: any) {
-    console.log(`[HackSky API] ${message}`, data || '')
+    console.log(`[Factora API] ${message}`, data || '')
   }
 
   // Scrape page content

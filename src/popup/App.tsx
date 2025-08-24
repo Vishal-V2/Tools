@@ -55,7 +55,7 @@ const App: React.FC = () => {
   }, [isDark])
 
   const addDebugLog = (message: string) => {
-    console.log(`[HackSky Debug] ${message}`)
+    console.log(`[Factora Debug] ${message}`)
   }
 
   const testApiConnection = async () => {
@@ -503,7 +503,7 @@ const App: React.FC = () => {
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           <Shield className="w-6 h-6 text-primary-600" />
-          <h1 className="text-lg font-bold">SafeClick</h1>
+          <h1 className="text-lg font-bold">Factora</h1>
         </div>
         <div className="flex items-center space-x-2">
           {/* API Status Indicator */}
@@ -1072,7 +1072,7 @@ const App: React.FC = () => {
             <div className="card p-4">
               <h3 className="text-lg font-semibold mb-3">About</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                SafeClick helps you identify AI-generated content and potential fake news threats.
+                Factora helps you identify AI-generated content and potential fake news threats.
                 Stay safe online with our advanced detection algorithms.
               </p>
             </div>

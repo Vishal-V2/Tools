@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Installing HackSky AI Detector dependencies..."
+echo "Installing Factora AI Detector dependencies..."
 npm install
 
 echo ""

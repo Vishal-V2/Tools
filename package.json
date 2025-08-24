@@ -1,5 +1,5 @@
 {
-  "name": "hacksky-ai-detector",
+  "name": "factora-ai-detector",
   "version": "1.0.0",
   "description": "AI-powered threat interception system for detecting fake content and honeytraps",
   "main": "index.js",
@@ -39,6 +39,6 @@
     "security",
     "threat-detection"
   ],
-  "author": "HackSky Team",
+  "author": "Factora Team",
   "license": "MIT"
 } 
